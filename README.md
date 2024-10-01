@@ -10,7 +10,7 @@ Características principales:
 - Interfaz de usuario moderna y responsive
 
 Estructura del proyecto:
-
+```
 lib/
   ├── main.dart
   ├── app.dart
@@ -67,3 +67,4 @@ lib/
 
 test/
   └── ...
+```
