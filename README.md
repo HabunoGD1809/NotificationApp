@@ -1,4 +1,15 @@
-# notification_app
+# Notification App
+
+Esta aplicación móvil desarrollada en Flutter se centra en la gestión y visualización de notificaciones para los usuarios. Ofrece funcionalidades de autenticación, una pantalla de inicio personalizada y un sistema robusto de notificaciones.
+
+Características principales:
+- Autenticación de usuarios
+- Pantalla de inicio personalizada
+- Sistema de notificaciones en tiempo real
+- Almacenamiento local de datos
+- Interfaz de usuario moderna y responsive
+
+Estructura del proyecto:
 
 lib/
   ├── main.dart
@@ -42,18 +53,17 @@ lib/
   │   ├── local_notification_service.dart
   │   ├── local_storage_service.dart
   │   └── api_service.dart
-  └── shared/
-      ├── models/
-      │   ├── user.dart
-      │   └── notification.dart
-      └── widgets/
-
-assets/
-  ├── images/
-  │   └── company_logo.png
-  ├── fonts/
-  └── sounds/
-      └── notification_sounds/
+  ├── shared/
+  │   ├── models/
+  │   │   ├── user.dart
+  │   │   └── notification.dart
+  │   └── widgets/
+  └── assets/
+      ├── images/
+      │   └── company_logo.png
+      ├── fonts/
+      └── sounds/
+          └── notification_sounds/
 
 test/
   └── ...
