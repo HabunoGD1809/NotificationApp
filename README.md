@@ -1,16 +1,59 @@
 # notification_app
 
-A new Flutter project.
+lib/
+  ├── main.dart
+  ├── app.dart
+  ├── config/
+  │   ├── theme.dart
+  │   ├── routes.dart
+  │   └── app_config.dart
+  ├── core/
+  │   ├── constants/
+  │   ├── errors/
+  │   ├── utils/
+  │   └── widgets/
+  ├── features/
+  │   ├── auth/
+  │   │   ├── data/
+  │   │   │   └── mock_auth_repository.dart
+  │   │   ├── domain/
+  │   │   │   └── auth_repository.dart
+  │   │   └── presentation/
+  │   │       ├── screens/
+  │   │       │   └── login_screen.dart
+  │   │       └── widgets/
+  │   ├── notifications/
+  │   │   ├── data/
+  │   │   │   └── mock_notification_repository.dart
+  │   │   ├── domain/
+  │   │   │   └── notification_repository.dart
+  │   │   └── presentation/
+  │   │       ├── screens/
+  │   │       │   └── notifications_screen.dart
+  │   │       └── widgets/
+  │   └── home/
+  │       ├── data/
+  │       ├── domain/
+  │       └── presentation/
+  │           └── screens/
+  │               └── home_screen.dart
+  ├── services/
+  │   ├── local_auth_service.dart
+  │   ├── local_notification_service.dart
+  │   ├── local_storage_service.dart
+  │   └── api_service.dart
+  └── shared/
+      ├── models/
+      │   ├── user.dart
+      │   └── notification.dart
+      └── widgets/
 
-## Getting Started
+assets/
+  ├── images/
+  │   └── company_logo.png
+  ├── fonts/
+  └── sounds/
+      └── notification_sounds/
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+test/
+  └── ...
