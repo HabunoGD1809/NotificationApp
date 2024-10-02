@@ -6,7 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.notification_app"
+//    namespace "com.dexterous.flutterlocalnotifications"
+    namespace 'com.example.notification_app'
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
