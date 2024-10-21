@@ -11,59 +11,58 @@ Características principales:
 
 Estructura del proyecto:
 ```
-lib/
-  ├── main.dart
-  ├── app.dart
-  ├── config/
-  │   ├── theme.dart
-  │   ├── routes.dart
-  │   └── app_config.dart
-  ├── core/
-  │   ├── constants/
-  │   ├── errors/
-  │   ├── utils/
-  │   └── widgets/
-  ├── features/
-  │   ├── auth/
-  │   │   ├── data/
-  │   │   │   └── mock_auth_repository.dart
-  │   │   ├── domain/
-  │   │   │   └── auth_repository.dart
-  │   │   └── presentation/
-  │   │       ├── screens/
-  │   │       │   └── login_screen.dart
-  │   │       └── widgets/
-  │   ├── notifications/
-  │   │   ├── data/
-  │   │   │   └── mock_notification_repository.dart
-  │   │   ├── domain/
-  │   │   │   └── notification_repository.dart
-  │   │   └── presentation/
-  │   │       ├── screens/
-  │   │       │   └── notifications_screen.dart
-  │   │       └── widgets/
-  │   └── home/
-  │       ├── data/
-  │       ├── domain/
-  │       └── presentation/
-  │           └── screens/
-  │               └── home_screen.dart
-  ├── services/
-  │   ├── local_auth_service.dart
-  │   ├── local_notification_service.dart
-  │   ├── local_storage_service.dart
-  │   └── api_service.dart
-  ├── shared/
-  │   ├── models/
-  │   │   ├── user.dart
-  │   │   └── notification.dart
-  │   └── widgets/
-  └── assets/
-      ├── images/
-      │   └── company_logo.png
-      ├── fonts/
-      └── sounds/
-          └── notification_sounds/
+notification_app/
+├── lib/
+│   ├── main.dart
+│   ├── app.dart
+│   ├── config/
+│   │   ├── theme.dart
+│   │   ├── routes.dart
+│   │   └── app_config.dart
+│   ├── core/
+│   │   ├── constants/
+│   │   │   └── app_constants.dart
+│   │   ├── errors/
+│   │   │   └── app_exceptions.dart
+│   │   ├── utils/
+│   │   │   └── date_formatter.dart
+│   │   └── widgets/
+│   │       └── loading_indicator.dart
+│   ├── features/
+│   │   ├── auth/
+│   │   │   └── presentation/
+│   │   │       └── screens/
+│   │   │           └── login_screen.dart
+│   │   ├── home/
+│   │   │   └── presentation/
+│   │   │       ├── screens/
+│   │   │       │   └── home_screen.dart
+│   │   │       └── widgets/
+│   │   │           └── dashboard_card.dart
+│   │   ├── notifications/
+│   │   │   └── presentation/
+│   │   │       └── screens/
+│   │   │           └── notifications_screen.dart
+│   │   └── admin/
+│   │       └── presentation/
+│   │           └── screens/
+│   │               └── admin_users_screen.dart
+│   ├── models/
+│   │   ├── user.dart
+│   │   ├── notification.dart
+│   │   └── device.dart
+│   └── services/
+│       ├── api_service.dart
+│       ├── background_service.dart
+│       ├── local_notification_service.dart
+│       ├── local_storage_service.dart
+│       └── websocket_service.dart
+├── assets/
+│   ├── images/
+│   │   └── logo.png
+│   ├── fonts/
+│   └── sounds/
+│       └── notification_sound.mp3
 
 test/
   └── ...
