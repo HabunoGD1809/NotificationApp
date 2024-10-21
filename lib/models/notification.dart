@@ -4,6 +4,7 @@ class NotificationModel {
   final String mensaje;
   final String? imagenUrl;
   final DateTime fechaCreacion;
+  final bool leida;
 
   NotificationModel({
     required this.id,
@@ -11,6 +12,7 @@ class NotificationModel {
     required this.mensaje,
     this.imagenUrl,
     required this.fechaCreacion,
+    required this.leida,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class NotificationModel {
       mensaje: json['mensaje'],
       imagenUrl: json['imagen_url'],
       fechaCreacion: DateTime.parse(json['fecha_creacion']),
+      leida: json['leida'],
     );
   }
 }

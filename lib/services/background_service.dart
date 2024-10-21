@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:notification_app/services/api_service.dart';
-import 'package:notification_app/services/websocket_service.dart';
+import 'package:notification_app/services/local_notification_service.dart';
 
 class BackgroundService {
   static Future<void> initializeService() async {
@@ -55,19 +54,30 @@ class BackgroundService {
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           service.setForegroundNotificationInfo(
-            title: "App de Notificaciones",
+            title: "Servicio de notificaciones",
             content: "Ejecutándose en segundo plano",
           );
         }
       }
 
-      // Verificar y refrescar el token si es necesario
-      await ApiService.checkAndRefreshToken();
-
-      // Mantener la conexión WebSocket activa
-      WebSocketService.ensureConnection();
-
-      // Aquí puedes agregar más tareas en segundo plano si es necesario
+      await _checkForNewNotifications();
     });
+  }
+
+  static Future<void> _checkForNewNotifications() async {
+    try {
+      final notifications = await ApiService.getNotifications();
+      for (var notification in notifications) {
+        if (!notification.leida) {
+          await LocalNotificationService.showNotification(
+            id: notification.id.hashCode,
+            title: notification.titulo,
+            body: notification.mensaje,
+          );
+        }
+      }
+    } catch (e) {
+      print('Error al verificar nuevas notificaciones: $e');
+    }
   }
 }

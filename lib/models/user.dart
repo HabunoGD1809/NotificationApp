@@ -4,7 +4,12 @@ class User {
   final String email;
   final bool esAdmin;
 
-  User({required this.id, required this.nombre, required this.email, required this.esAdmin});
+  User({
+    required this.id,
+    required this.nombre,
+    required this.email,
+    required this.esAdmin,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(

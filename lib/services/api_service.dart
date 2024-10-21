@@ -1,145 +1,265 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:notification_app/config/app_config.dart';
 import 'package:notification_app/models/user.dart';
 import 'package:notification_app/models/notification.dart';
 import 'package:notification_app/models/device.dart';
-import 'package:notification_app/config/app_config.dart';
 import 'package:notification_app/services/local_storage_service.dart';
 
 class ApiService {
-  static const String baseUrl = AppConfig.apiBaseUrl;
-  static String? _token;
-
-  static void setToken(String token) {
-    _token = token;
+  static Future<String> _getToken() async {
+    final token = LocalStorageService.getString('access_token');
+    if (token == null) {
+      throw Exception('No se encontró el token de acceso');
+    }
+    return token;
   }
 
   static Future<Map<String, String>> _getHeaders() async {
+    final token = await _getToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $_token',
+      'Authorization': 'Bearer $token',
     };
   }
 
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  static Future<dynamic> _handleResponse(http.Response response) async {
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 401) {
+      // Token expirado, intentar renovar
+      await refreshToken();
+      throw Exception('Token expirado, por favor intente de nuevo');
+    } else {
+      throw Exception('Error en la solicitud: ${response.statusCode}');
+    }
+  }
+
+  static Future<void> refreshToken() async {
+    final refreshToken = await LocalStorageService.getString('refresh_token');
+    if (refreshToken == null) {
+      throw Exception('No se encontró el token de refresco');
+    }
+
     final response = await http.post(
-      Uri.parse('$baseUrl/token'),
-      body: {'username': email, 'password': password},
+      Uri.parse('${AppConfig.apiBaseUrl}/token/refresh'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'refresh_token': refreshToken}),
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      setToken(data['access_token']);
       await LocalStorageService.setString('access_token', data['access_token']);
-      await LocalStorageService.setString('refresh_token', data['refresh_token']);
-      return data;
+      await LocalStorageService.setString(
+          'refresh_token', data['refresh_token']);
     } else {
-      throw Exception('Failed to login');
+      throw Exception('Error al renovar el token');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> login(
+      String email, String password) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/token'),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: {
+        'username': email,
+        'password': password,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return null;
     }
   }
 
   static Future<User> getCurrentUser() async {
+    final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/usuarios/me'),
-      headers: await _getHeaders(),
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/me'),
+      headers: headers,
     );
-
-    if (response.statusCode == 200) {
-      return User.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Failed to get current user');
-    }
-  }
-
-  static Future<bool> checkAndRefreshToken() async {
-    final refreshToken = LocalStorageService.getString('refresh_token');
-
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/token/refresh'),
-        body: {'refresh_token': refreshToken},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setToken(data['access_token']);
-        await LocalStorageService.setString('access_token', data['access_token']);
-        await LocalStorageService.setString('refresh_token', data['refresh_token']);
-        return true;
-      }
-    } catch (e) {
-      print('Error refreshing token: $e');
-    }
-
-    return false;
-  }
-
-  static Future<List<User>> getAllUsers() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios'),
-      headers: await _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      List<dynamic> usersJson = json.decode(response.body);
-      return usersJson.map((json) => User.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to get users');
-    }
+    final data = await _handleResponse(response);
+    return User.fromJson(data);
   }
 
   static Future<List<NotificationModel>> getNotifications() async {
+    final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/notificaciones'),
-      headers: await _getHeaders(),
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones'),
+      headers: headers,
     );
-
-    if (response.statusCode == 200) {
-      List<dynamic> notificationsJson = json.decode(response.body);
-      return notificationsJson.map((json) => NotificationModel.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to get notifications');
-    }
+    final data = await _handleResponse(response);
+    return (data as List)
+        .map((item) => NotificationModel.fromJson(item))
+        .toList();
   }
 
   static Future<void> markNotificationAsRead(String notificationId) async {
+    final headers = await _getHeaders();
     final response = await http.put(
-      Uri.parse('$baseUrl/notificaciones/$notificationId/leer'),
-      headers: await _getHeaders(),
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones/$notificationId/leer'),
+      headers: headers,
     );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to mark notification as read');
-    }
+    await _handleResponse(response);
   }
 
-  static Future<Device> registerDevice(String token, String model, String os) async {
+  static Future<void> createNotification(String title, String body) async {
+    final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/dispositivos'),
-      headers: await _getHeaders(),
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones'),
+      headers: headers,
       body: json.encode({
-        'token': token,
-        'modelo': model,
-        'sistema_operativo': os,
+        'titulo': title,
+        'mensaje': body,
       }),
     );
+    await _handleResponse(response);
+  }
 
-    if (response.statusCode == 200) {
-      return Device.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Failed to register device');
-    }
+  static Future<List<User>> getUsers() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios'),
+      headers: headers,
+    );
+    final data = await _handleResponse(response);
+    return (data as List).map((item) => User.fromJson(item)).toList();
+  }
+
+  static Future<void> sendNotificationToUser(
+      String userId, String title, String body) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones'),
+      headers: headers,
+      body: json.encode({
+        'titulo': title,
+        'mensaje': body,
+        'dispositivos_objetivo': [userId],
+      }),
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<List<Device>> getDevices() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/dispositivos'),
+      headers: headers,
+    );
+    final data = await _handleResponse(response);
+    return (data as List).map((item) => Device.fromJson(item)).toList();
+  }
+
+  static Future<void> updateDeviceToken(
+      String deviceId, String newToken) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/dispositivos/$deviceId/token'),
+      headers: headers,
+      body: json.encode({'nuevo_token': newToken}),
+    );
+    await _handleResponse(response);
   }
 
   static Future<void> updateDeviceStatus(String deviceId, bool isOnline) async {
+    final headers = await _getHeaders();
     final response = await http.put(
-      Uri.parse('$baseUrl/dispositivos/$deviceId/online'),
-      headers: await _getHeaders(),
+      Uri.parse('${AppConfig.apiBaseUrl}/dispositivos/$deviceId/online'),
+      headers: headers,
       body: json.encode({'esta_online': isOnline}),
     );
+    await _handleResponse(response);
+  }
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to update device status');
-    }
+  static Future<Map<String, dynamic>> getNotificationStatistics() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones/estadisticas'),
+      headers: headers,
+    );
+    return await _handleResponse(response);
+  }
+
+  static Future<void> resendNotification(String notificationId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse(
+          '${AppConfig.apiBaseUrl}/notificaciones/$notificationId/reenviar'),
+      headers: headers,
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> setNotificationSound(String sound) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/configuracion-sonido'),
+      headers: headers,
+      body: json.encode({'sonido': sound}),
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<String> getNotificationSound() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/configuracion-sonido'),
+      headers: headers,
+    );
+    final data = await _handleResponse(response);
+    return data['sonido'];
+  }
+
+  static Future<void> deleteUser(String userId) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/$userId'),
+      headers: headers,
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> changePassword(String newPassword) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/cambiar_contrasena'),
+      headers: headers,
+      body: json.encode({'nueva_contrasena': newPassword}),
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> resetUserPassword(
+      String userId, String newPassword) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse(
+          '${AppConfig.apiBaseUrl}/usuarios/$userId/restablecer_contrasena'),
+      headers: headers,
+      body: json.encode({'nueva_contrasena': newPassword}),
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> deleteDevice(String deviceId) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/dispositivos/$deviceId'),
+      headers: headers,
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> deleteNotification(String notificationId) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/notificaciones/$notificationId'),
+      headers: headers,
+    );
+    await _handleResponse(response);
   }
 }

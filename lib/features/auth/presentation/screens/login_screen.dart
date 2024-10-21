@@ -97,16 +97,21 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
       try {
-        final loginData = await ApiService.login(
-          _emailController.text,
-          _passwordController.text,
-        );
-        await LocalStorageService.setString('access_token', loginData['access_token']);
-        await LocalStorageService.setString('refresh_token', loginData['refresh_token']);
-        Navigator.of(context).pushReplacementNamed('/home');
+        final response = await ApiService.login(
+            _emailController.text,
+            _passwordController.text);
+        if (response != null) {
+          await LocalStorageService.setString('access_token', response['access_token']);
+          await LocalStorageService.setString('refresh_token', response['refresh_token']);
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Credenciales inválidas')),
+          );
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al iniciar sesión')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       } finally {
         setState(() {
