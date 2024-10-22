@@ -18,8 +18,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAdminStatus();
-    _connectWebSocket();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      await _checkAdminStatus();
+      await _connectWebSocket();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al inicializar: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   Future<void> _checkAdminStatus() async {
@@ -30,14 +42,30 @@ class _HomeScreenState extends State<HomeScreen> {
         _userId = user.id;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al obtener información del usuario: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al obtener información del usuario: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  void _connectWebSocket() {
-    WebSocketService.connect(_userId);
+  Future<void> _connectWebSocket() async {
+    try {
+      final token = LocalStorageService.getString('access_token');
+      if (token != null && _userId.isNotEmpty) {
+        print('Conectando WebSocket con userId: $_userId'); // Debug log
+        WebSocketService.connect(_userId, token);
+      } else {
+        throw Exception('No se pudo iniciar la conexión WebSocket: token o userId no disponible');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al conectar WebSocket: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
@@ -131,14 +159,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (title.isNotEmpty && body.isNotEmpty) {
                   try {
                     await ApiService.createNotification(title, body);
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Notificación enviada con éxito')),
-                    );
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Notificación enviada con éxito')),
+                      );
+                    }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al enviar notificación: ${e.toString()}')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al enviar notificación: ${e.toString()}')),
+                      );
+                    }
                   }
                 }
               },
@@ -150,9 +182,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _logout() async {
-    await LocalStorageService.remove('access_token');
-    await LocalStorageService.remove('refresh_token');
+    try {
+      await LocalStorageService.remove('access_token');
+      await LocalStorageService.remove('refresh_token');
+      WebSocketService.disconnect();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cerrar sesión: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
     WebSocketService.disconnect();
-    Navigator.of(context).pushReplacementNamed('/login');
+    super.dispose();
   }
 }
