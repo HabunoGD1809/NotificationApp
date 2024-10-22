@@ -30,19 +30,38 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.13.5
-  shared_preferences: ^2.0.15
-  flutter_local_notifications: ^17.2.3
-  intl: ^0.17.0
-  local_auth: ^2.1.0
-  web_socket_channel: ^2.2.0
-  flutter_background_service_android:
-  flutter_background_service:
+  # Networking
+  http: ^1.1.0
+  web_socket_channel: ^2.4.0
 
+  # Storage & Preferences
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  flutter_secure_storage: ^9.0.0
+
+  # Notifications & Background Services
+  flutter_local_notifications: ^17.2.1+2
+  flutter_background_service:
+  flutter_background_service_android:
+
+  # Authentication & Permissions
+  local_auth: ^2.1.7
+  permission_handler: ^11.0.1
+
+  # Media & Audio
+
+  audio_session: ^0.1.16
+  just_audio: ^0.9.35
+
+  # Device Info & Utilities
+  device_info_plus: ^9.1.0
+  image_picker: ^1.0.4
+  intl: ^0.18.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +79,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/sounds/notification_sounds/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

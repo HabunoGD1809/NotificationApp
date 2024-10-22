@@ -3,6 +3,11 @@ import 'package:notification_app/features/home/presentation/widgets/dashboard_ca
 import 'package:notification_app/services/api_service.dart';
 import 'package:notification_app/services/local_storage_service.dart';
 import 'package:notification_app/services/websocket_service.dart';
+import 'package:notification_app/models/user.dart';
+import 'package:notification_app/features/profile/presentation/screens/profile_screen.dart';
+import 'package:notification_app/features/devices/presentation/screens/devices_screen.dart';
+import 'package:notification_app/features/settings/presentation/screens/sound_settings_screen.dart';
+import 'package:notification_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,86 +18,75 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isAdmin = false;
-  String _userId = '';
+  User? _currentUser;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initialize();
+    _loadUserData();
   }
 
-  Future<void> _initialize() async {
-    try {
-      await _checkAdminStatus();
-      await _connectWebSocket();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al inicializar: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  Future<void> _checkAdminStatus() async {
+  Future<void> _loadUserData() async {
     try {
       final user = await ApiService.getCurrentUser();
-      setState(() {
-        _isAdmin = user.esAdmin;
-        _userId = user.id;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al obtener información del usuario: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  Future<void> _connectWebSocket() async {
-    try {
       final token = LocalStorageService.getString('access_token');
-      if (token != null && _userId.isNotEmpty) {
-        print('Conectando WebSocket con userId: $_userId'); // Debug log
-        WebSocketService.connect(_userId, token);
-      } else {
-        throw Exception('No se pudo iniciar la conexión WebSocket: token o userId no disponible');
+
+      if (token == null) {
+        throw Exception('No se encontró el token de acceso');
       }
+
+      setState(() {
+        _currentUser = user;
+        _isAdmin = user.esAdmin;
+        _isLoading = false;
+      });
+
+      // Conectar WebSocket con el token
+      print('Conectando WebSocket para usuario: ${user.id}'); // Debug log
+      WebSocketService.connect(user.id, token);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al conectar WebSocket: ${e.toString()}')),
+          SnackBar(content: Text('Error al cargar datos del usuario: ${e.toString()}')),
         );
       }
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return _isAdmin ? _buildAdminHome() : _buildUserHome();
+  }
+
+  Widget _buildAdminHome() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inicio'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: _logout,
-          ),
-        ],
+        title: const Text('Panel de Administración'),
+        actions: _buildAppBarActions(),
+      ),
+      body: const AdminDashboardScreen(),
+    );
+  }
+
+  Widget _buildUserHome() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Bienvenido, ${_currentUser?.nombre ?? ""}'),
+        actions: _buildAppBarActions(),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Panel de Control',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
@@ -100,24 +94,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSpacing: 16,
                 children: [
                   DashboardCard(
-                    title: 'Notificaciones',
+                    title: 'Mis Notificaciones',
                     value: 'Ver todas',
                     icon: Icons.notifications,
-                    onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                    onTap: () => Navigator.pushNamed(context, '/notifications'),
                   ),
                   DashboardCard(
-                    title: 'Enviar Notificación',
-                    value: 'Prueba',
-                    icon: Icons.send,
-                    onTap: _showSendNotificationDialog,
-                  ),
-                  if (_isAdmin)
-                    DashboardCard(
-                      title: 'Administrar Usuarios',
-                      value: 'Ver todos',
-                      icon: Icons.people,
-                      onTap: () => Navigator.of(context).pushNamed('/admin/users'),
+                    title: 'Mis Dispositivos',
+                    value: 'Gestionar',
+                    icon: Icons.devices,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DevicesScreen(userId: _currentUser!.id),
+                      ),
                     ),
+                  ),
+                  DashboardCard(
+                    title: 'Configuración',
+                    value: 'Sonidos y más',
+                    icon: Icons.settings,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SoundSettingsScreen(userId: _currentUser!.id),
+                      ),
+                    ),
+                  ),
+                  DashboardCard(
+                    title: 'Mi Perfil',
+                    value: 'Ver detalles',
+                    icon: Icons.person,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(user: _currentUser!),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -127,65 +141,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showSendNotificationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        String title = '';
-        String body = '';
-        return AlertDialog(
-          title: const Text('Enviar Notificación de Prueba'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(labelText: 'Título'),
-                onChanged: (value) => title = value,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Mensaje'),
-                onChanged: (value) => body = value,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              child: const Text('Enviar'),
-              onPressed: () async {
-                if (title.isNotEmpty && body.isNotEmpty) {
-                  try {
-                    await ApiService.createNotification(title, body);
-                    if (mounted) {
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Notificación enviada con éxito')),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error al enviar notificación: ${e.toString()}')),
-                      );
-                    }
-                  }
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
+  List<Widget> _buildAppBarActions() {
+    return [
+      IconButton(
+        icon: const Icon(Icons.exit_to_app),
+        onPressed: _logout,
+        tooltip: 'Cerrar sesión',
+      ),
+    ];
   }
 
   Future<void> _logout() async {
     try {
+      WebSocketService.disconnect(); // Desconectar WebSocket antes de limpiar tokens
       await LocalStorageService.remove('access_token');
       await LocalStorageService.remove('refresh_token');
-      WebSocketService.disconnect();
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }

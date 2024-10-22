@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:notification_app/config/app_config.dart';
 import 'package:notification_app/models/user.dart';
@@ -36,7 +37,7 @@ class ApiService {
   }
 
   static Future<void> refreshToken() async {
-    final refreshToken = await LocalStorageService.getString('refresh_token');
+    final refreshToken = LocalStorageService.getString('refresh_token');
     if (refreshToken == null) {
       throw Exception('No se encontró el token de refresco');
     }
@@ -106,7 +107,13 @@ class ApiService {
     await _handleResponse(response);
   }
 
-  static Future<void> createNotification(String title, String body) async {
+  // en revision
+  static Future<void> createNotification({
+    required String title,
+    required String body,
+    String? imageUrl,
+    List<String>? dispositivosObjetivo,
+  }) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('${AppConfig.apiBaseUrl}/notificaciones'),
@@ -114,6 +121,8 @@ class ApiService {
       body: json.encode({
         'titulo': title,
         'mensaje': body,
+        if (imageUrl != null) 'imagenUrl': imageUrl,
+        if (dispositivosObjetivo != null) 'dispositivosObjetivo': dispositivosObjetivo,
       }),
     );
     await _handleResponse(response);
@@ -259,6 +268,56 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('${AppConfig.apiBaseUrl}/notificaciones/$notificationId'),
       headers: headers,
+    );
+    await _handleResponse(response);
+  }
+
+  static Future<void> uploadImage(File imageFile) async {
+    final headers = await _getHeaders();
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${AppConfig.apiBaseUrl}/upload-image'),
+    );
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'image',
+        imageFile.path,
+      ),
+    );
+
+    request.headers.addAll(headers);
+
+    var response = await request.send();
+    if (response.statusCode != 200) {
+      throw Exception('Error al subir la imagen');
+    }
+  }
+
+  static Future<List<Device>> getUserDevices(String userId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/usuarios/$userId/dispositivos'),
+      headers: headers,
+    );
+    final data = await _handleResponse(response);
+    return (data as List).map((item) => Device.fromJson(item)).toList();
+  }
+
+  static Future<void> registerDevice({
+    required String token,
+    required String modelo,
+    required String sistemaOperativo,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/dispositivos'),
+      headers: headers,
+      body: json.encode({
+        'token': token,
+        'modelo': modelo,
+        'sistema_operativo': sistemaOperativo,
+      }),
     );
     await _handleResponse(response);
   }
